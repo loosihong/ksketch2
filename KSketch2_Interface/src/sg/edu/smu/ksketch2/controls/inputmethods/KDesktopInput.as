@@ -219,7 +219,7 @@ package sg.edu.smu.ksketch2.controls.inputmethods
 				}
 			}
 			
-			_handler_Mouse_Move(event);
+			//_handler_Mouse_Move(event);
 			_interactionControl.completeCanvasInput();
 			
 			_interactionComponent.removeEventListener(MouseEvent.MOUSE_MOVE, _handler_Mouse_Move);
