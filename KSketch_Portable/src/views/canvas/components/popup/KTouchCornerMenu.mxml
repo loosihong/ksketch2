@@ -4,6 +4,7 @@
 						   creationComplete="setUpToggles()">
 	<fx:Script>
 		<![CDATA[
+			import sg.edu.smu.ksketch2.KSketch2;
 			import sg.edu.smu.ksketch2.controls.interactors.KDrawInteractor;
 			
 			import views.canvas.KSketch_CanvasView;
@@ -14,7 +15,7 @@
 			private var _canvasView:KSketch_CanvasView;
 			private var _isPen:Boolean
 			
-			public static const BLACK_PEN_COLOR:uint = 0xBDBDBD;
+			public static const BLACK_PEN_COLOR:uint = 0x000000;
 			public static const RED_PEN_COLOR:uint = 0xFA5882;
 			public static const GREEN_PEN_COLOR:uint = 0x82FA58;
 			public static const BLUE_PEN_COLOR:uint = 0x58ACFA;
@@ -44,7 +45,6 @@
 			public function clear():void
 			{
 				_interactionControl.reset();
-				close();
 			}
 			
 			public function penColor(value:uint):void
@@ -138,6 +138,19 @@
 					<s:VerticalLayout gap="1" paddingLeft="3" paddingRight="3" paddingTop="3" paddingBottom="3"/>
 				</s:layout>
 				<s:Button name="exit" skinClass="views.canvas.components.popup.PopUpMenuButtonSkin" click="exit()"/>
+			</s:Group>
+			<s:Line alpha="0.25" width="90%">
+				<s:stroke>
+					<s:SolidColorStroke weight="1" color="0x000000"/>
+				</s:stroke>
+			</s:Line>						
+			<s:Group>
+				<s:layout>
+					<s:VerticalLayout gap="1" paddingLeft="3" paddingRight="3" paddingTop="3" paddingBottom="3"/>
+				</s:layout>
+				<s:Button name="modeI" skinClass="views.canvas.components.popup.PopUpMenuButtonSkin" click="{KSketch2.studyMode = KSketch2.STUDY_I}"/>
+				<s:Button name="modeD" skinClass="views.canvas.components.popup.PopUpMenuButtonSkin" click="{KSketch2.studyMode = KSketch2.STUDY_D}"/>
+				<s:Button name="modeDI" skinClass="views.canvas.components.popup.PopUpMenuButtonSkin" click="{KSketch2.studyMode = KSketch2.STUDY_DI}"/>
 			</s:Group>
 <!--		<s:Group>
 				<s:layout>

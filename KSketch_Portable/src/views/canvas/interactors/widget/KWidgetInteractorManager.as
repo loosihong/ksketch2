@@ -64,6 +64,7 @@ package views.canvas.interactors.widget
 			interactionControl.addEventListener(KSketchEvent.EVENT_SELECTION_SET_CHANGED, updateWidget);
 			interactionControl.addEventListener(KMobileInteractionControl.EVENT_INTERACTION_BEGIN, updateWidget);
 			interactionControl.addEventListener(KMobileInteractionControl.EVENT_INTERACTION_END, updateWidget);
+			_KSketch.addEventListener(KSketchEvent.EVENT_MODEL_UPDATED, updateWidget);
 			_KSketch.addEventListener(KTimeChangedEvent.EVENT_TIME_CHANGED, updateWidget);
 		}
 		
@@ -134,6 +135,14 @@ package views.canvas.interactors.widget
 		
 		public function set transitionMode(mode:int):void
 		{
+			if(KSketch2.studyMode == KSketch2.STUDY_I)
+			{
+				_interactionControl.transitionMode = KSketch2.TRANSITION_INTERPOLATED;
+				enabled = true;
+				_activeMode.demonstrationMode = false;
+				return;
+			}
+			
 			_interactionControl.transitionMode = mode;
 			
 			if(_interactionControl.transitionMode == KSketch2.TRANSITION_DEMONSTRATED)

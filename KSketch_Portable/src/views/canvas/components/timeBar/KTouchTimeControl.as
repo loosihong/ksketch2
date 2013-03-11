@@ -1,56 +1,42 @@
 package views.canvas.components.timeBar
 {
 	import flash.events.Event;
+	import flash.events.MouseEvent;
 	import flash.events.TimerEvent;
-	import flash.events.TouchEvent;
 	import flash.geom.Point;
+	import flash.system.Capabilities;
 	import flash.utils.Timer;
-	
-	import org.gestouch.events.GestureEvent;
-	import org.gestouch.gestures.PanGesture;
 	
 	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.controls.widgets.ITimeControl;
 	import sg.edu.smu.ksketch2.controls.widgets.KTimeControl;
 	import sg.edu.smu.ksketch2.events.KTimeChangedEvent;
+	
 
 	public class KTouchTimeControl extends TouchSliderTemplate implements ITimeControl
 	{
 		public var recordingSpeed:Number = 1;
 		private var _editMarkers:Boolean;
 		
-		private const _PAN_SPEED_1:int = 1
-		private const _PAN_SPEED_2:int = 3;
-		private const _PAN_SPEED_3:int = 9;
-		private const _PAN_SPEED_4:int = 15;
-		
-		private const _PAN_THRESHOLD_1:Number = 5;
-		private const _PAN_THRESHOLD_2:Number = 8;
-		private const _PAN_THRESHOLD_3:Number = 10;
-		
-		private const _STEP_THRESHOLD:Number = 7;
-		
 		public static const PLAY_ALLOWANCE:int = 2000;
 		public static const MAX_ALLOWED_TIME:int = 600000; //Max allowed time of 10 mins
 		
 		protected var _KSketch:KSketch2;
-		private var _tickmarkControl:KTouchTickMarkControl;
-		protected var _timer:Timer;
-		private var _maxPlayTime:int;
+		protected var _magnifier:KTouchTimeSliderMagnifier;
+		protected var _tickmarkControl:KTouchTickMarkControl;
+		
 		protected var _isPlaying:Boolean = false;
-		private var _rewindToTime:int;
+		protected var _timer:Timer;
+		protected var _maxPlayTime:int;
+		protected var _rewindToTime:int;
 		
 		private var _maxFrame:int;
 		private var _currentFrame:int;
 		
-		protected var _panVector:Point = new Point();
-		protected var _panSpeed:int = _PAN_SPEED_1;
-		protected var _prevOffset:Number = 1;
-		protected var _panOffset:Number = 0;
-		protected var _panGesture:PanGesture;
-		
 		public var timings:Vector.<int>;
 		
+		private var _touchStage:Point = new Point(0,0);
+
 		public function KTouchTimeControl()
 		{
 			super();
@@ -60,44 +46,37 @@ package views.canvas.components.timeBar
 		{
 			_KSketch = KSketchInstance;
 			_tickmarkControl = tickmarkControl;
-			floatingLabel.init(contentGroup);
+			
+			_timer = new Timer(KSketch2.ANIMATION_INTERVAL);
+			
+			addEventListener(MouseEvent.MOUSE_DOWN, _touchDown);
+
+			_magnifier = new KTouchTimeSliderMagnifier();
+			_magnifier.init(contentGroup, this);
+			
+			timeDisplay.graphics.lineStyle(6,0x000000, 0.25);
+			var anchor:Point = contentGroup.globalToLocal(localToGlobal(new Point(0,0)));
+			timeDisplay.graphics.moveTo(0,anchor.y);
+			timeDisplay.graphics.lineTo(0,anchor.y+height);
 			
 			maximum = KTimeControl.DEFAULT_MAX_TIME;
 			time = 0;
-			editMarkers = false;
 			
-			_timer = new Timer(KSketch2.ANIMATION_INTERVAL);
-			floatingLabel.y = localToGlobal(new Point(0,0)).y - 40;
-			
-			addEventListener(TouchEvent.TOUCH_BEGIN, _tickmarkControl.openMagnifier);
-			addEventListener(TouchEvent.TOUCH_END, _tickmarkControl.closeMagnifier);
-			_panGesture = new PanGesture(this);
-			_panGesture.maxNumTouchesRequired = 1;
-			_panGesture.addEventListener(GestureEvent.GESTURE_BEGAN, _beginPanning);
-			_panGesture.addEventListener(GestureEvent.GESTURE_CHANGED, _updatePanning);
-			_panGesture.addEventListener(GestureEvent.GESTURE_ENDED, _endPanning);
+			_magnifier.open(contentGroup);
 		}
 		
 		public function reset():void
 		{
 			maximum = KTimeControl.DEFAULT_MAX_TIME;
 			time = 0;
-			editMarkers =  false;
 		}
 		
-		public function set editMarkers(edit:Boolean):void
+		public function dispose():void
 		{
-			_editMarkers = edit;
-			
-			if(_editMarkers)
+			if(_magnifier)
 			{
-				backgroundFill.alpha = 0.5;
-				timeFill.alpha = 0.2;
-			}
-			else
-			{
-				backgroundFill.alpha = 1;
-				timeFill.alpha = 1;
+				_magnifier.visible = false;
+				_magnifier.close();
 			}
 		}
 		
@@ -130,7 +109,7 @@ package views.canvas.components.timeBar
 			if(maximum < value)
 				maximum = value;
 			
-			_currentFrame = int(Math.floor(value/KSketch2.ANIMATION_INTERVAL));
+			_currentFrame = timeToFrame(value);
 			_KSketch.time = _currentFrame * KSketch2.ANIMATION_INTERVAL;
 			
 			if(KTimeControl.DEFAULT_MAX_TIME < time)
@@ -149,13 +128,10 @@ package views.canvas.components.timeBar
 			}
 			
 			var pct:Number = _currentFrame/(_maxFrame*1.0);
-			timeFill.percentWidth = pct*100;
-
-			if(!_isPlaying)
-			{
-				floatingLabel.x = timeFill.localToGlobal(new Point(pct*backgroundFill.width, 0)).x;
-				floatingLabel.showMessage(time, _currentFrame);
-			}
+			timeDisplay.x = pct*backgroundFill.width;
+			
+			_magnifier.x = timeToX(time);
+			_magnifier.showTime(time, _currentFrame);
 		}
 		
 		/**
@@ -166,85 +142,80 @@ package views.canvas.components.timeBar
 			return _KSketch.time
 		}
 		
-		protected function _beginPanning(event:GestureEvent):void
+		public function get currentFrame():int
 		{
-			_tickmarkControl.pan_begin(_panGesture.location);
+			return _currentFrame;
 		}
 		
-		protected function _updatePanning(event:GestureEvent):void
+		protected function _touchDown(event:MouseEvent):void
 		{
-			//If edit markers, rout event into the tick mark control and return
-			_tickmarkControl.pan_update(_panGesture.location);
-		}
-		
-		protected function _endPanning(event:GestureEvent):void
-		{
-			if(event.type == GestureEvent.GESTURE_ENDED)
+			_touchStage.x = event.stageX;
+			_touchStage.y = event.stageY;
+			var xPos:Number = contentGroup.globalToLocal(_touchStage).x;
+			
+			var dx:Number = Math.abs(xPos - timeToX(time));
+
+			if(dx > Capabilities.screenDPI/7)
+				_tickmarkControl.grabTick(xPos);
+			
+			if(_tickmarkControl.grabbedTick)
 			{
-				//If edit markers, rout event into the tick mark control and return
-				_tickmarkControl.pan_end(_panGesture.location);
+				var toShowTime:int = xToTime(_tickmarkControl.grabbedTick.x);
+				_magnifier.x = _tickmarkControl.grabbedTick.x;
+				_magnifier.showTime(toShowTime, timeToFrame(toShowTime));
+				_magnifier.magnify(_tickmarkControl.grabbedTick.x);
 			}
-		}
-		
-		/**
-		 * update slider with offsetX, subjected to speed changes
-		 */
-		public function updateSlider(offsetX:Number, offsetY:Number):void
-		{
-			//Changed direction, have to reset all pan gesture calibrations till now.
-			if((_prevOffset * offsetX) < 0)
-				resetSliderInteraction();
-			
-			_panVector.x = offsetX;
-			_panVector.y = offsetY;
-			
-			var absOffset:Number = _panVector.length;
-			
-			//Pan Offset is the absolute distance moved during a pan gesture
-			//Need to update to see how far this pan has moved.
-			_panOffset += absOffset;
-			
-			//Speed calibration according to how far the pan gesture moved.
-			if( absOffset <= _PAN_THRESHOLD_1)
-				_panSpeed = _PAN_SPEED_1;
-			else if(absOffset <= _PAN_THRESHOLD_2)
-				_panSpeed = _PAN_SPEED_2;
-			else if(absOffset <= _PAN_THRESHOLD_3)
-				_panSpeed = _PAN_SPEED_3 * (maximum/KTimeControl.DEFAULT_MAX_TIME);
 			else
-				_panSpeed = absOffset * (maximum/KTimeControl.DEFAULT_MAX_TIME);
-			
-			//Update the time according to the direction of the pan.
-			//Advance if it's towards the right
-			//Roll back if it's towards the left.
-			if(_panOffset > _STEP_THRESHOLD)
-			{				
-				if(0 < offsetX)
-					time = time + (_panSpeed*KSketch2.ANIMATION_INTERVAL);
-				else if(offsetX < 0)
-					time = time - (_panSpeed*KSketch2.ANIMATION_INTERVAL);
+			{
+				var timeX:Number = timeToX(time);
 				
-				_panOffset = 0;
+				if(Math.abs(xPos - timeX) > Capabilities.screenDPI/7)
+					time = xToTime(xPos);
+				
+				_magnifier.magnify(timeToX(time));
 			}
 			
-			//Save the current offset value, will need this thing to check for
-			//change in direction in the next update event
-			_prevOffset =  offsetX;
+			stage.addEventListener(MouseEvent.MOUSE_MOVE, _touchMove);
+			stage.addEventListener(MouseEvent.MOUSE_UP, _touchEnd);
+			removeEventListener(MouseEvent.MOUSE_DOWN, _touchDown);
 		}
 		
-		/**
-		 * For resetting slider interaction values;
-		 */
-		public function resetSliderInteraction():void
+		protected function _touchMove(event:MouseEvent):void
 		{
-			_prevOffset = 1;
-			_panOffset = 0;
-			_panSpeed = _PAN_SPEED_1;
+			if(Math.abs(event.stageX - _touchStage.x) < (pixelPerFrame*0.5))
+				return;
+			
+			_touchStage.x = event.stageX;
+			_touchStage.y = event.stageY;
+			var xPos:Number = contentGroup.globalToLocal(_touchStage).x;
+			
+			if(_tickmarkControl.grabbedTick)
+			{
+				_tickmarkControl.move_markers(xPos);
+				var toShowTime:int = xToTime(_tickmarkControl.grabbedTick.x);
+				_magnifier.x = _tickmarkControl.grabbedTick.x;
+				_magnifier.showTime(toShowTime, timeToFrame(toShowTime));
+				_magnifier.magnify(_tickmarkControl.grabbedTick.x);
+			}
+			else
+			{
+				time = xToTime(xPos);
+				_magnifier.magnify(timeToX(time));
+			}
 		}
 		
-		/**
-		 * Play Pause Record functions
-		 */
+		protected function _touchEnd(event:MouseEvent):void
+		{
+			if(_tickmarkControl.grabbedTick)
+				_tickmarkControl.end_move_markers();
+			
+			_magnifier.closeMagnifier();
+			_tickmarkControl.grabbedTick = null;
+			
+			stage.removeEventListener(MouseEvent.MOUSE_MOVE, _touchMove);
+			stage.removeEventListener(MouseEvent.MOUSE_UP, _touchEnd);
+			addEventListener(MouseEvent.MOUSE_DOWN, _touchDown);
+		}
 		
 		/**
 		 * Enters the playing state machien
@@ -329,12 +300,19 @@ package views.canvas.components.timeBar
 		}
 		
 		/**
+		 * Converts a time value to frame value
+		 */
+		public function timeToFrame(value:int):int
+		{
+			return int(Math.floor(value/KSketch2.ANIMATION_INTERVAL));
+		}
+		
+		/**
 		 * Converts a time value to a x position;
 		 */
 		public function timeToX(value:int):Number
 		{
-			var currentFrame:int = value/KSketch2.ANIMATION_INTERVAL;
-			return currentFrame/(_maxFrame*1.0) * backgroundFill.width;
+			return timeToFrame(value)/(_maxFrame*1.0) * backgroundFill.width;
 		}
 		
 		public function xToTime(value:Number):int
@@ -349,73 +327,23 @@ package views.canvas.components.timeBar
 			return backgroundFill.width/_maxFrame;
 		}
 		
-		
-		/**
-		 * Sets next closest landmark time in the given direction as the 
-		 * current time.
-		 */
-		public function jumpInDirection(direction:Number):void
+		public static function toTimeCode(milliseconds:Number):String
 		{
-			var i:int;
-			var length:int = timings.length;
+			var seconds:int = Math.floor((milliseconds/1000));
+			var strSeconds:String = seconds.toString();
+			if(seconds < 10)
+				strSeconds = "0" + strSeconds;
 			
-			var timeList:Vector.<int> = new Vector.<int>();
 			
-			for(i = 0; i<length; i++)
-			{
-				timeList.push(timings[i]);
-			}
+			var remainingMilliseconds:int = (milliseconds%1000)/10;
+			var strMilliseconds:String = remainingMilliseconds.toString();
+			strMilliseconds = strMilliseconds.charAt(0) + strMilliseconds.charAt(1);
 			
-			timeList.unshift(0);
-			timeList.push(maximum);
-
-			var currentTime:Number = _KSketch.time;			
-			var currentIndex:int = 0;
+			if(remainingMilliseconds < 10)
+				strMilliseconds = "0" + strMilliseconds;
 			
-			for(i = 0; i < timeList.length; i++)
-			{
-				currentIndex = i;
-				
-				if(currentTime <= timeList[i])
-					break;
-			}
-			
-			var toTime:Number = 0;
-			
-			if(direction < 0)
-			{
-				currentIndex -= 1;
-				
-				if(currentIndex < 0)
-					toTime = 0;
-				else
-					toTime = timeList[currentIndex];
-			}
-			else
-			{
-				if(currentIndex < timeList.length)
-				{
-					var checkTime:Number = timeList[currentIndex];
-					if(checkTime == _KSketch.time)
-					{
-						while(checkTime == _KSketch.time)
-						{
-							currentIndex += 1;
-							
-							if(currentIndex < timeList.length)
-								checkTime = timeList[currentIndex];
-							else
-								break;
-						}
-					}
-					
-					toTime = checkTime;
-				}
-				else
-					toTime = _KSketch.time;
-			}
-			
-			time = toTime;
+			var timeCode:String = strSeconds + ':' + strMilliseconds;
+			return timeCode;
 		}
 	}
 }
