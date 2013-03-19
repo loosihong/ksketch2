@@ -11,8 +11,7 @@ package sg.edu.smu.ksketch2.view
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	
-	import sg.edu.smu.ksketch2.model.data_structures.IKeyFrame;
-	import sg.edu.smu.ksketch2.model.data_structures.KPath;
+	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.model.data_structures.KSpatialKeyFrame;
 	import sg.edu.smu.ksketch2.model.data_structures.KTimedPoint;
 	import sg.edu.smu.ksketch2.model.objects.KObject;
@@ -31,54 +30,106 @@ package sg.edu.smu.ksketch2.view
 		
 		override public function recomputePathPoints(time:int):void
 		{
-			clearPoints();
-			_activeKey = (_object.transformInterface as KSingleReferenceFrameOperator).getActiveKey(time) as KSpatialKeyFrame;
-			
-			//Compute for translation first.
-			//We will do two key frames for translation.
-			var currentMatrix:Matrix = _activeKey?_object.fullPathMatrix(_activeKey.startTime):new Matrix();
-			var currentPosition:Point = currentMatrix.transformPoint(_object.centroid);
-			
-			if(_activeKey && _activeKey.duration != 0)
+			if(!_activeKey)
 			{
-				_translatePoints = createPathPoints(currentPosition, _activeKey?_activeKey.translatePath.points:null, _activeKey);
-				_rotatePoints = createPathPoints(_object.centroid, _activeKey?_activeKey.rotatePath.points:null, _activeKey);
-				generateRotationMotionPath(_rotatePoints);
-				_scalePoints = _activeKey? _activeKey.scalePath.clone().points:null;
+				_translatePoints = null;
+				_rotatePoints = null;
+				_scalePoints = null;
+				_nextTranslatePoints = null;
+				return;
+			}
+			
+			if(_activeKey.duration != 0)
+			{
+				_translatePoints = generatePath(_activeKey, _activeKey.translatePath.points, _translatePoints);
+				_rotatePoints = generatePath(_activeKey, _activeKey.rotatePath.points, _rotatePoints);
+				generateRotationMotionPath(_rotatePoints);			
+				_scalePoints = generatePath(_activeKey, _activeKey.scalePath.points, _scalePoints);
 				generateScaleMotionPath(_scalePoints);
 			}
-			
-			if(_activeKey && _activeKey.next)
+			else
 			{
-				if((_activeKey.next as KSpatialKeyFrame).duration != 0)
+				_translatePoints = null;
+				_rotatePoints = null;
+				_scalePoints = null;
+			}
+			
+			if(!_activeKey.hasActivityAtTime())
+			{
+				if(KSketch2.studyMode == KSketch2.STUDY_P)
 				{
-					currentMatrix = _object.fullPathMatrix((_activeKey.next as KSpatialKeyFrame).startTime);
-					currentPosition = currentMatrix.transformPoint(_object.centroid);
-					_nextTranslatePoints = createPathPoints(currentPosition, (_activeKey.next as KSpatialKeyFrame).translatePath.points,
-						_activeKey.next as KSpatialKeyFrame);
+					var currentKey:KSpatialKeyFrame = (_object.transformInterface as KSingleReferenceFrameOperator).lastKeyWithTransform(_activeKey);
+					_translatePoints = generatePath(currentKey, currentKey.translatePath.points, _translatePoints);
+					_rotatePoints = generatePath(currentKey, currentKey.rotatePath.points, _rotatePoints);
+					generateRotationMotionPath(_rotatePoints);			
+					_scalePoints = generatePath(currentKey, currentKey.scalePath.points, _scalePoints);
 				}
 			}
+			
+			if(time == _activeKey.time || !_activeKey.hasActivityAtTime())
+			{
+				if(_activeKey.next)
+				{
+					if((_activeKey.next as KSpatialKeyFrame).duration != 0)
+						_nextTranslatePoints = generatePath(_activeKey.next as KSpatialKeyFrame,
+							(_activeKey.next as KSpatialKeyFrame).translatePath.points,
+							_nextTranslatePoints);
+				}
+				else
+					_nextTranslatePoints = null;
+			}
+			else
+				_nextTranslatePoints = null;
 		}
 		
-		private function createPathPoints(origin:Point, transformPoints:Vector.<KTimedPoint>, targetKey:KSpatialKeyFrame):Vector.<KTimedPoint>
+		/**
+		 * Generates a path for the given key
+		 * Generated path will be in the form transform + origin;
+		 */
+		private function generatePath(key:KSpatialKeyFrame, targetPoints:Vector.<KTimedPoint>, transformPoints:Vector.<KTimedPoint>):Vector.<KTimedPoint>
 		{
-			if(!transformPoints || !targetKey)
+			if(key.duration == 0)
 				return null;
 			
-			var i:int;
-			var length:int = transformPoints.length;
-			var currentPoint:KTimedPoint;
-			var motionPath:Vector.<KTimedPoint> = new Vector.<KTimedPoint>();
-
-			for(i = 0; i < length; i++)
+			var length:int = targetPoints.length;
+			if(length != 0)
 			{
-				currentPoint = transformPoints[i].clone();
-				currentPoint.x += origin.x;
-				currentPoint.y += origin.y;
-				motionPath.push(currentPoint);
+				var currentMatrix:Matrix = _activeKey?_object.fullPathMatrix(key.startTime):new Matrix();
+				var currentPosition:Point = currentMatrix.transformPoint(_object.centroid);
+
+				if(!transformPoints)
+					transformPoints = new Vector.<KTimedPoint>();
+				
+				if(transformPoints.length < length)
+				{
+					while(transformPoints.length < length)
+						transformPoints.push(new KTimedPoint());
+				}
+				else if(transformPoints.length > length)
+				{
+					while(transformPoints.length > length)
+						transformPoints.shift();
+				}
+				
+				var i:int;
+				var currentPoint:KTimedPoint;
+				var targetPoint:KTimedPoint;
+				
+				for(i = 0; i < length; i++)
+				{
+					currentPoint = transformPoints[i];
+					targetPoint = targetPoints[i];
+					currentPoint.x = currentPosition.x + targetPoint.x;
+					currentPoint.y = currentPosition.y + targetPoint.y;
+					currentPoint.time = targetPoint.time;
+				}
+		
+				return transformPoints;
 			}
 			
-			return motionPath;
+			//Set points to null if there are no points at all
+			//No need to render everything
+			return null;
 		}
 		
 		public function generateRotationMotionPath(path:Vector.<KTimedPoint>):void
@@ -90,11 +141,11 @@ package sg.edu.smu.ksketch2.view
 			var cartesianPoint:Point;
 			var firstPoint:KTimedPoint = path[0];
 			var duration:Number = path[path.length-1].time - firstPoint.time;
-			
+			var factor:Number = PATH_RADIUS/duration;
 			for(var i:int = 0; i<path.length; i++)
 			{
 				currentTransitionPoint = path[i];
-				cartesianPoint = Point.polar(PATH_RADIUS+((currentTransitionPoint.time- firstPoint.time)/duration*PATH_RADIUS),currentTransitionPoint.x);
+				cartesianPoint = Point.polar(PATH_RADIUS+((currentTransitionPoint.time- firstPoint.time)*factor),currentTransitionPoint.x);
 				currentTransitionPoint.x = cartesianPoint.x;
 				currentTransitionPoint.y = cartesianPoint.y;
 			}
@@ -135,11 +186,11 @@ package sg.edu.smu.ksketch2.view
 		
 		override public function renderPathView(time:int):void
 		{
-			var currentActiveKey:KSpatialKeyFrame =  (_object.transformInterface as KSingleReferenceFrameOperator).getActiveKey(time) as KSpatialKeyFrame;
+			_activeKey =  (_object.transformInterface as KSingleReferenceFrameOperator).getActiveKey(time) as KSpatialKeyFrame;
+		
 			
-			if(_activeKey != currentActiveKey)
-				recomputePathPoints(time);
 			
+			recomputePathPoints(time);
 			super.renderPathView(time);
 		}
 	}

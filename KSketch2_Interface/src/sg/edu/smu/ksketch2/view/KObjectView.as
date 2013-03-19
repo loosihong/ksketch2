@@ -13,7 +13,10 @@ package sg.edu.smu.ksketch2.view
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	
+	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.events.KObjectEvent;
+	import sg.edu.smu.ksketch2.model.data_structures.IKeyFrame;
+	import sg.edu.smu.ksketch2.model.data_structures.KSpatialKeyFrame;
 	import sg.edu.smu.ksketch2.model.objects.KObject;
 	import sg.edu.smu.ksketch2.operators.operations.KCompositeOperation;
 	
@@ -51,7 +54,7 @@ package sg.edu.smu.ksketch2.view
 			if(_ghost)
 			{
 				_ghost.visible = false;
-				_ghost.alpha = 0.3;
+				_ghost.alpha = 0.1;
 			}
 		}
 		
@@ -108,8 +111,9 @@ package sg.edu.smu.ksketch2.view
 			
 			transform.matrix = _object.transformMatrix(time);
 			
-			if(!_isTransiting)
-				_updatePathView(time);
+			if(_pathView)
+				if(_pathView.visible)
+					_updatePathView(time);
 		}
 		
 		/**
@@ -123,11 +127,14 @@ package sg.edu.smu.ksketch2.view
 		protected function _transformBegin(event:KObjectEvent):void
 		{
 			_originalPosition = _object.transformInterface.matrix(event.time).transformPoint(_object.centroid);
-			if(_ghost)
-				_updateGhost(event);
 
 			if(_pathView)
-				_pathView.visible = false;
+			{
+				if(object.transformInterface.transitionType == KSketch2.TRANSITION_DEMONSTRATED)
+					_pathView.visible = false;
+				else
+					_pathView.visible = true;
+			}
 			
 			_isTransiting = true;
 			_object.addEventListener(KObjectEvent.OBJECT_TRANSFORM_UPDATING, _updateGhost);
@@ -137,17 +144,53 @@ package sg.edu.smu.ksketch2.view
 		{
 			if(_object && _ghost)
 			{
+				_ghost.visible = true;
 				var currentMatrix:Matrix = _object.transformInterface.matrix(event.time);
-				var currentPosition:Point = currentMatrix.transformPoint(_object.centroid);
-				var positionDifferences:Point = currentPosition.subtract(_originalPosition);
 				
-				if(positionDifferences.x < 1 && positionDifferences.y < 1)
-					_ghost.visible = false;
+				if(object.transformInterface.transitionType == KSketch2.TRANSITION_DEMONSTRATED)
+				{
+					currentMatrix = _object.transformInterface.matrix(event.time);
+					var currentPosition:Point = currentMatrix.transformPoint(_object.centroid);
+					var positionDifferences:Point = currentPosition.subtract(_originalPosition);
+					
+					if(positionDifferences.x > 1 || positionDifferences.y > 1)
+					{
+						currentMatrix.translate(-positionDifferences.x, -positionDifferences.y);
+						_ghost.transform.matrix = currentMatrix;
+					}
+				}
 				else
 				{
-					_ghost.visible = true;
-					currentMatrix.translate(-positionDifferences.x, -positionDifferences.y);
-					_ghost.transform.matrix = currentMatrix;
+					var activeKey:IKeyFrame = _object.transformInterface.getActiveKey(event.time);
+					
+					if(!activeKey)
+					{
+						_ghost.visible = false;
+						return;
+					}
+					else
+						_ghost.visible = true;
+					
+					if(activeKey.time == event.time||!activeKey.hasActivityAtTime())
+					{
+						activeKey = activeKey.next;
+						
+						if(!activeKey)
+							_ghost.visible = false;
+					}
+
+					if(activeKey)
+					{
+						if(activeKey.hasActivityAtTime())
+						{
+							currentMatrix = _object.transformInterface.matrix(activeKey.time);
+							_ghost.transform.matrix = currentMatrix;
+						}
+						else
+							_ghost.visible = false;
+					}
+					else
+						_ghost.visible = false;
 				}
 			}
 		}
@@ -167,6 +210,7 @@ package sg.edu.smu.ksketch2.view
 			_object.removeEventListener(KObjectEvent.OBJECT_TRANSFORM_UPDATING, _updateGhost);
 		}
 		
+		public var myI:int = 0;
 		protected function _updatePathView(time:int):void
 		{
 			if(_pathView)

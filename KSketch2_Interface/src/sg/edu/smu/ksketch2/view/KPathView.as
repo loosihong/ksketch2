@@ -33,6 +33,7 @@ package sg.edu.smu.ksketch2.view
 		protected var _nextTranslatePath:Shape;
 		protected var _rotatePath:Shape;
 		protected var _scalePath:Shape;
+		protected var _visibility:Boolean;
 		
 		public function KPathView(object:KObject)
 		{
@@ -41,6 +42,7 @@ package sg.edu.smu.ksketch2.view
 			_nextTranslatePath = new Shape();
 			_rotatePath = new Shape();
 			_scalePath = new Shape();
+			visible = false;
 		}
 		
 		public function setDrawingArea(translateHost:DisplayObjectContainer, rotateHost:DisplayObjectContainer, scaleHost:DisplayObjectContainer):void
@@ -128,10 +130,16 @@ package sg.edu.smu.ksketch2.view
 		
 		public function set visible(visibility:Boolean):void
 		{
+			_visibility = visibility;
 			_translatePath.visible = visibility;
 			_nextTranslatePath.visible = visibility;
 			_rotatePath.visible = visibility;
 			_scalePath.visible = visibility;
+		}
+		
+		public function get visible():Boolean
+		{
+			return _visibility;
 		}
 		
 		protected function _drawArrowHead(display:Shape, color:uint, points:Vector.<KTimedPoint>):void

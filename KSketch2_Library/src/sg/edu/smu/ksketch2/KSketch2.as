@@ -32,8 +32,13 @@ package sg.edu.smu.ksketch2
 	 */
 	public class KSketch2 extends EventDispatcher
 	{
+		public static const STUDY_K:int = 0;
+		public static const STUDY_P:int = 1;
+		public static const STUDY_PK:int = 2;
+		
+		public static var studyMode:int = STUDY_P;
 		public static var discardTransitionTimings:Boolean = false;
-		public static var addInterpolationKeys:Boolean = true;
+		public static var addInterpolationKeys:Boolean = false;
 		public static var returnTranslationInterpolationToZero:Boolean = true;
 		public static var returnRotationInterpolationToZero:Boolean = false;
 		public static var returnScaleInterpolationToZero:Boolean = false;
@@ -56,6 +61,9 @@ package sg.edu.smu.ksketch2
 		
 		private var _sceneGraph:KSceneGraph;
 		private var _time:int;
+		
+		public var log:XML;
+		public var logStartTime:Number;
 		
 		public function KSketch2()
 		{
@@ -83,6 +91,36 @@ package sg.edu.smu.ksketch2
 		public function get sceneXML():XML
 		{
 			return _sceneGraph.serialize();
+		}
+		
+		public function beginSession():void
+		{
+			log = <session/>;
+			
+			var date:Date = new Date();
+			logStartTime = date.time;
+			log.@date = date.toString();
+			
+			switch(studyMode)
+			{	
+				case STUDY_K:
+					log.@mode = "K"
+					break;
+				case STUDY_P:
+					log.@mode = "P"
+					break;
+				case STUDY_PK:
+					log.@mode = "PK"
+					break;
+			}
+		}
+		
+		public function get sessionLog():XML
+		{
+			if(!log)
+				throw new Error("Session not initiated");
+			
+			return log;
 		}
 		
 		public function generateSceneFromXML(xml:XML):void
@@ -187,9 +225,9 @@ package sg.edu.smu.ksketch2
 		}
 		
 		//Transform functions
-		public function beginTransform(object:KObject, transitionType:int):void
+		public function beginTransform(object:KObject, transitionType:int, op:KCompositeOperation):void
 		{
-			object.transformInterface.beginTransition(time, transitionType);
+			object.transformInterface.beginTransition(time, transitionType, op);
 		}
 		
 		public function updateTransform(object:KObject, dx:Number, dy:Number, dTheta:Number, dScale:Number):void
@@ -212,7 +250,8 @@ package sg.edu.smu.ksketch2
 			if(key.time != newTime)
 			{
 				op.addOperation(new KEditKeyTimeOperation(object, key, newTime, key.time)); 
-				(key as KKeyFrame).retime(newTime, op)
+				(key as KKeyFrame).retime(newTime, op);
+				object.transformInterface.dirty = true;
 			}
 		}
 	}

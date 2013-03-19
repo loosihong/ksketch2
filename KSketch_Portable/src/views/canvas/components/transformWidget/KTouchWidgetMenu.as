@@ -16,6 +16,7 @@ package views.canvas.components.transformWidget
 	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.events.KSketchEvent;
 	
+	import views.canvas.components.timeBar.KTouchTimeControl;
 	import views.canvas.interactioncontrol.KMobileInteractionControl;
 	import views.canvas.interactors.widget.KWidgetInteractorManager;
 	import views.document.previewer.KTouchPreviewerButtonSkin;
@@ -36,6 +37,7 @@ package views.canvas.components.transformWidget
 		private var _insertKeyButton:Button;
 		private var _clearMotionButton:Button;
 		private var blocker:Button;
+		private var _initiated:Boolean = false;
 		
 		//Need to find a way to display this radially
 		public function KTouchWidgetMenu(KSketchInstance:KSketch2,
@@ -61,13 +63,12 @@ package views.canvas.components.transformWidget
 			_buttonContainer.setStyle("gap", 3);
 			
 			_insertKeyButton = new Button();
-			_insertKeyButton.label = "Insert Key";
+			
 			_insertKeyButton.percentWidth = 100;
 			_insertKeyButton.setStyle("skinClass", Class(KTouchWidgetMenuButtonSkin));
 			_insertKeyButton.addEventListener(MouseEvent.CLICK, _insertKey); 
 
 			_clearMotionButton = new Button();
-			_clearMotionButton.label = "Clear All Motions";
 			_clearMotionButton.percentWidth = 100;
 			_clearMotionButton.setStyle("skinClass", Class(KTouchWidgetMenuButtonSkin));
 			_clearMotionButton.addEventListener(MouseEvent.CLICK, _clearMotion); 
@@ -77,8 +78,14 @@ package views.canvas.components.transformWidget
 			_buttonContainer.addElement(_insertKeyButton);
 			_buttonContainer.addElement(_clearMotionButton);
 
-			addEventListener(FlexEvent.CREATION_COMPLETE, _updateMenu);
-
+			addEventListener(FlexEvent.CREATION_COMPLETE, _initiateMenu);
+		}
+		
+		private function _initiateMenu(event:Event):void
+		{
+			_initiated = true;
+			_updateMenu();
+			removeEventListener(FlexEvent.CREATION_COMPLETE, _initiateMenu);
 		}
 		
 		/**
@@ -92,14 +99,29 @@ package views.canvas.components.transformWidget
 			y = yPos;
 			blocker.x = -x;
 			blocker.y = -y;
+			
+			if(KSketch2.studyMode == KSketch2.STUDY_P)
+			{
+				_insertKeyButton.label = "Break motion at "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+				_clearMotionButton.label = "Delete motions after "+ KTouchTimeControl.toTimeCode(_KSketch.time)
+			}
+			else
+			{
+				_insertKeyButton.label = "Insert key at "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+				_clearMotionButton.label = "Clear keys after "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+			}
+			
 			super.open(owner, modal);
+			_updateMenu();
 		}
 		
-		private function _updateMenu(event:Event):void
+		private function _updateMenu():void
 		{
-			//Check for button availability here
-			trace(width);
 			_canInsertKey();
+			
+			if(!_initiated)
+				return;
+			
 			_layoutButtons();
 		}
 		
@@ -132,14 +154,12 @@ package views.canvas.components.transformWidget
 					point = Point.polar(BASE_BUTTON_RADIUS, 15/180*Math.PI)
 					_buttonContainer.x = point.x;
 					_buttonContainer.y = point.y;
-					trace("bottom right", _buttonContainer.x, _buttonContainer.y);
 				}
 				else
 				{
 					point = Point.polar(BASE_BUTTON_RADIUS, -15/180*Math.PI)
 					_buttonContainer.x = point.x;
 					_buttonContainer.y = point.y - _buttonContainer.height;
-					trace("top right", _buttonContainer.x, _buttonContainer.y);
 				}
 				
 			}
@@ -152,15 +172,12 @@ package views.canvas.components.transformWidget
 					point = Point.polar(BASE_BUTTON_RADIUS, 165/180*Math.PI)
 					_buttonContainer.x = point.x - _buttonContainer.width;
 					_buttonContainer.y = point.y;
-					trace("bottom left", _buttonContainer.x, _buttonContainer.y);
-					trace("bottom left", point, _buttonContainer.width);
 				}
 				else
 				{
 					point = Point.polar(BASE_BUTTON_RADIUS, -165/180*Math.PI)
 					_buttonContainer.x = point.x - _buttonContainer.width;
 					_buttonContainer.y = point.y - _buttonContainer.height;
-					trace("top left", _buttonContainer.x, _buttonContainer.y);
 				}
 			}
 		}
@@ -198,6 +215,16 @@ package views.canvas.components.transformWidget
 			_interactionControl.begin_interaction_operation();
 			_interactionControl.selection.objects.getObjectAt(0).transformInterface.insertBlankKeyFrame(_KSketch.time, _interactionControl.currentInteraction);
 			_interactionControl.end_interaction_operation(null,_interactionControl.selection);
+			
+			var log:XML = <op/>;
+			var date:Date = new Date();
+			
+			log.@category = "Context";
+			log.@type = "Insert Key";
+			log.@triggeredTime = KTouchTimeControl.toTimeCode(_KSketch.time);
+			log.@elapsedTime = KTouchTimeControl.toTimeCode(date.time - _KSketch.logStartTime);
+			_KSketch.log.appendChild(log);
+			
 			_KSketch.dispatchEvent(new KSketchEvent(KSketchEvent.EVENT_MODEL_UPDATED));
 			
 			_canInsertKey();
@@ -209,6 +236,16 @@ package views.canvas.components.transformWidget
 			_interactionControl.begin_interaction_operation();
 			_interactionControl.selection.objects.getObjectAt(0).transformInterface.clearAllMotionsAfterTime(_KSketch.time, _interactionControl.currentInteraction);
 			_interactionControl.end_interaction_operation(null, _interactionControl.selection);
+			
+			var log:XML = <op/>;
+			var date:Date = new Date();
+			
+			log.@category = "Context";
+			log.@type = "Clear Future Keys";
+			log.@triggeredTime = KTouchTimeControl.toTimeCode(_KSketch.time);
+			log.@elapsedTime = KTouchTimeControl.toTimeCode(date.time - _KSketch.logStartTime);
+			_KSketch.log.appendChild(log);
+			
 			_KSketch.dispatchEvent(new KSketchEvent(KSketchEvent.EVENT_MODEL_UPDATED));
 			close();
 		}

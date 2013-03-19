@@ -9,6 +9,7 @@ package views.canvas.interactors
 	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.model.objects.KObject;
 	
+	import views.canvas.components.timeBar.KTouchTimeControl;
 	import views.canvas.interactioncontrol.KMobileInteractionControl;
 	
 	public class KTouchTranslateInteractor extends KTouchTransitionInteractor
@@ -58,7 +59,7 @@ package views.canvas.interactors
 			var currentObject:KObject;
 			
 			for(i; i < length; i++)
-				_KSketch.beginTransform(_transitionObjects.getObjectAt(i),_interactionControl.transitionMode);
+				_KSketch.beginTransform(_transitionObjects.getObjectAt(i),_interactionControl.transitionMode, _interactionControl.currentInteraction);
 			
 			_translateGesture.addEventListener(GestureEvent.GESTURE_CHANGED, _update_Translate);
 			_translateGesture.addEventListener(GestureEvent.GESTURE_ENDED, _interaction_end);			
@@ -74,6 +75,20 @@ package views.canvas.interactors
 				_KSketch.endTransform(_transitionObjects.getObjectAt(i),  _interactionControl.currentInteraction);
 			
 			super._interaction_end(event);
+			
+			var log:XML = <op/>;
+			var date:Date = new Date();
+			
+			log.@category = "Transition";
+			if(_interactionControl.transitionMode == KSketch2.TRANSITION_DEMONSTRATED)
+				log.@type = "Perform Translate";
+			else
+				log.@type = "Interpolate Translate";
+			
+			log.@KSketchDuration = KTouchTimeControl.toTimeCode(_KSketch.time - _startTime);
+			log.@elapsedTime = KTouchTimeControl.toTimeCode(date.time - _KSketch.logStartTime);
+			_KSketch.log.appendChild(log);
+						
 			reset();
 		}
 		

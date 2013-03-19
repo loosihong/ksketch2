@@ -82,6 +82,15 @@
 					case "zoomOut":
 						labelText = "-";
 						break;
+					case "modeI":
+						labelText = "K";
+						break;
+					case "modeD":
+						labelText = "P";
+						break;
+					case "modeDI":
+						labelText = "PK";
+						break;
 					case "exit":
 						iconGraphics.graphics.lineStyle(POP_UP_MENU_BUTTON_THICKNESS, POP_UP_MENU_BUTTON_GREY);
 						iconGraphics.graphics.moveTo(0.35*width, 0.65*height);
