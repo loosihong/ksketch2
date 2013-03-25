@@ -105,7 +105,7 @@ package sg.edu.smu.ksketch2.view
 				object.addEventListener(KGroupEvent.OBJECT_REMOVED, _handler_ObjectDiscarded);
 			}
 			else if(object is KStroke)
-				view = new KStrokeView(object as KStroke,false, showPath);
+				view = new KStrokeView(object as KStroke,false, showPath, false);
 			else if (object is KImage)
 			{
 				view = new KImageView(object as KImage, false,showPath);

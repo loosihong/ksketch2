@@ -123,37 +123,28 @@ package sg.edu.smu.ksketch2.controls.interactors
 			//Create new points for Catmull Rom Spline
 			var newPoints:Vector.<Point> = new Vector.<Point>();
 			
-			for(var j:int = 0; j < pCtr; j++)
+			//Add two bezier control points in between two catmull rom control points
+			for(i=0; i<pCtr; i++)
 			{
-				var nxtJ:int = j + 1;
-				var p0:Point = points[j];
-				var p1:Point = points[nxtJ];
-				var m0:Point = m[j];
-				var m1:Point = m[nxtJ];
+				var tempPoint:Point;
 				
-				//Set resolution to maximum update every 1 pixel
-				var res:Number = 1/(1 + Point.distance(p0, p1));
+				//First catmull rom control points, B0 = P0
+				newPoints.push(points[i]);
 				
-				for(var t:Number = 0; t < 1; t+=res)
-				{
-					var t2:Number = t * t;
-					var OneMinusT:Number = 1 - t;
-					var twoT:Number = 2*t;
-					
-					var h00:Number = (1 + twoT)*OneMinusT*OneMinusT;
-					var h10:Number = t*OneMinusT*OneMinusT;
-					var h01:Number = t2*(3 - twoT);
-					var h11:Number = t2*(t - 1);					
-					
-					var xCoord:Number = h00 * p0.x + h10 * m0.x + h01 * p1.x + h11 * m1.x;
-					var yCoord:Number = h00 * p0.y + h10 * m0.y + h01 * p1.y + h11 * m1.y;
-					
-					newPoints.push(new Point(xCoord, yCoord));
-				}		
+				//First bezier control points, B1 = P0 + M0/3
+				tempPoint = new Point((points[i].x + (m[i].x/3)), (points[i].y + (m[i].y/3)));
+				newPoints.push(tempPoint);
+				
+				//Second bezier control points, B2 = P1 - M1/3
+				tempPoint = new Point((points[i+1].x - (m[i+1].x/3)), (points[i+1].y - (m[i+1].y/3)));
+				newPoints.push(tempPoint);
+				
+				//Second catmull rom control points, B1 = P1
+				//To be covered in next iteration
 			}
 			
-			//Add last control point to Catmull Rom Spline
-			newPoints.push(new Point(points[pCtr].x, points[pCtr].y));
+			//Add last catmull rom control point
+			newPoints.push(points[pCtr]);
 			
 			return newPoints;
 		}
