@@ -28,6 +28,7 @@
 	<fx:Script>
 		<![CDATA[
 			import mx.events.FlexEvent;
+			
 			import spark.events.ViewNavigatorEvent;
 			
 			import sg.edu.smu.ksketch2.KSketch2;
@@ -82,7 +83,7 @@
 					interceptor.graphics.drawRect(0,0, width, height);
 					interceptor.graphics.drawRect(playBounds.x, playBounds.y, playBounds.width, playBounds.height);
 					interceptor.graphics.endFill();
-					playButton.init(timeControl, _interactionControl,interceptor);
+					playButton.init(timeControl, _interactionControl,interceptor, _KSketch);
 				}
 					
 				_interactionControl.reset();
@@ -95,6 +96,8 @@
 						
 						if(currentDocument.xml.scene.children().length() > 0)
 							_KSketch.generateSceneFromXML(new XML(currentDocument.xml.scene));
+						
+						_KSketch.beginSession();
 					}					
 				}
 			}
@@ -153,14 +156,18 @@
 			
 			override public function createReturnObject():Object
 			{
-				var saveXML:XML = <KSketch date=""/>;
+				
+				var saveXML:XML = currentDocument.xml;
+				
+				delete(saveXML.scene);
+
 				var sceneXML:XML = _KSketch.sceneXML;
+				var logXML:XML = _KSketch.sessionLog;
 				
 				if(0 < sceneXML.children().length())
 				{
 					saveXML.appendChild(sceneXML);
-					saveXML.appendChild(<log/>);
-					saveXML.@date = new Date().toString();
+					saveXML.log.appendChild(logXML);
 					currentDocument.xml = saveXML;
 				}
 				
@@ -173,7 +180,29 @@
 		<s:layout>
 			<s:VerticalLayout gap="2"/>
 		</s:layout>
-		
+		<s:Group id="timebar_region" width="100%" height="{Capabilities.screenDPI * 0.25 * (drawing_stage.height/KSketch2.CANONICAL_HEIGHT)}"
+				 minHeight="{Capabilities.screenDPI*0.25}">
+			<s:Rect width="100%" height="100%">
+				<s:fill>
+					<s:SolidColor color="0xE7E7E7"/>
+				</s:fill>
+			</s:Rect>
+			<s:Group width="100%" height="100%">
+				<s:layout >
+					<s:HorizontalLayout gap="0" verticalAlign="middle" paddingLeft="5"/>
+				</s:layout>
+				<timeBar:Touch_Play_Button id="playButton" click="playButton.playToggle()"/>
+				<timeBar:KTouchTimeJumpControl id="leftTimeJumper"/>
+				<s:Group width="100%" height="100%">
+					<s:layout>
+						<s:VerticalLayout gap="3" verticalAlign="middle" horizontalAlign="center" paddingLeft="5" paddingRight="5"/>
+					</s:layout>
+					<timeBar:KTouchTimeControl id="timeControl"/>
+				</s:Group>
+				<timeBar:KTouchTimeJumpControl id="rightTimeJumper"/>
+				<timeBar:Touch_Menu_Button id="menuButton" click="_menuBtnHandler()"/>
+			</s:Group>
+		</s:Group>
 		<s:Group width="100%" height="100%">
 			<s:Rect left="1" right="1" top="1" bottom="1">
 				<s:fill>
@@ -218,29 +247,7 @@
 			</s:Group>
 		</s:Group>
 		
-		<s:Group id="timebar_region" width="100%" height="{Capabilities.screenDPI * 0.25 * (drawing_stage.height/KSketch2.CANONICAL_HEIGHT)}"
-				 								minHeight="{Capabilities.screenDPI*0.25}">
-			<s:Rect width="100%" height="100%">
-				<s:fill>
-					<s:SolidColor color="0xE7E7E7"/>
-				</s:fill>
-			</s:Rect>
-			<s:Group width="100%" height="100%">
-				<s:layout >
-					<s:HorizontalLayout gap="0" verticalAlign="middle" paddingLeft="5"/>
-				</s:layout>
-				<timeBar:Touch_Play_Button id="playButton" click="playButton.playToggle()"/>
-				<timeBar:KTouchTimeJumpControl id="leftTimeJumper"/>
-				<s:Group width="100%" height="100%">
-					<s:layout>
-						<s:VerticalLayout gap="3" verticalAlign="middle" horizontalAlign="center" paddingLeft="5" paddingRight="5"/>
-					</s:layout>
-					<timeBar:KTouchTimeControl id="timeControl"/>
-				</s:Group>
-				<timeBar:KTouchTimeJumpControl id="rightTimeJumper"/>
-				<timeBar:Touch_Menu_Button id="menuButton" click="_menuBtnHandler()"/>
-			</s:Group>
-		</s:Group>
+		
 	</s:Group>
 	
 	<s:Group width="100%" height="100%" visible="false" id="interceptor" alpha="0"/>

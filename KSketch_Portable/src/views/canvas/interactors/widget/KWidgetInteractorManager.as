@@ -8,6 +8,7 @@ package views.canvas.interactors.widget
 	import org.gestouch.gestures.TapGesture;
 	
 	import sg.edu.smu.ksketch2.KSketch2;
+	import sg.edu.smu.ksketch2.controls.interactioncontrol.KInteractionControl;
 	import sg.edu.smu.ksketch2.events.KSketchEvent;
 	import sg.edu.smu.ksketch2.events.KTimeChangedEvent;
 	
@@ -64,6 +65,7 @@ package views.canvas.interactors.widget
 			interactionControl.addEventListener(KSketchEvent.EVENT_SELECTION_SET_CHANGED, updateWidget);
 			interactionControl.addEventListener(KMobileInteractionControl.EVENT_INTERACTION_BEGIN, updateWidget);
 			interactionControl.addEventListener(KMobileInteractionControl.EVENT_INTERACTION_END, updateWidget);
+			interactionControl.addEventListener(KInteractionControl.EVENT_UNDO_REDO, updateWidget);
 			_KSketch.addEventListener(KSketchEvent.EVENT_MODEL_UPDATED, updateWidget);
 			_KSketch.addEventListener(KTimeChangedEvent.EVENT_TIME_CHANGED, updateWidget);
 		}
@@ -135,15 +137,11 @@ package views.canvas.interactors.widget
 		
 		public function set transitionMode(mode:int):void
 		{
-			if(KSketch2.studyMode == KSketch2.STUDY_I)
-			{
-				_interactionControl.transitionMode = KSketch2.TRANSITION_INTERPOLATED;
-				enabled = true;
-				_activeMode.demonstrationMode = false;
-				return;
-			}
+			if(KSketch2.studyMode == KSketch2.STUDY_K)
+				mode = KSketch2.TRANSITION_INTERPOLATED
 			
 			_interactionControl.transitionMode = mode;
+			
 			
 			if(_interactionControl.transitionMode == KSketch2.TRANSITION_DEMONSTRATED)
 			{
@@ -155,6 +153,8 @@ package views.canvas.interactors.widget
 			}
 			else if(_interactionControl.transitionMode == KSketch2.TRANSITION_INTERPOLATED)
 			{
+				if(KSketch2.studyMode == KSketch2.STUDY_K && KSketch2.studyMode == KSketch2.STUDY_PK)
+					enabled = _interactionControl.selection.selectionTransformable(_KSketch.time);
 				_activeMode.demonstrationMode = false;
 			}
 			else

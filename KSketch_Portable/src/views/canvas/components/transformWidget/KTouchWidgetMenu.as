@@ -16,6 +16,7 @@ package views.canvas.components.transformWidget
 	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.events.KSketchEvent;
 	
+	import views.canvas.components.timeBar.KTouchTimeControl;
 	import views.canvas.interactioncontrol.KMobileInteractionControl;
 	import views.canvas.interactors.widget.KWidgetInteractorManager;
 	import views.document.previewer.KTouchPreviewerButtonSkin;
@@ -68,7 +69,6 @@ package views.canvas.components.transformWidget
 			_insertKeyButton.addEventListener(MouseEvent.CLICK, _insertKey); 
 
 			_clearMotionButton = new Button();
-			_clearMotionButton.label = "Delete Future Motions";
 			_clearMotionButton.percentWidth = 100;
 			_clearMotionButton.setStyle("skinClass", Class(KTouchWidgetMenuButtonSkin));
 			_clearMotionButton.addEventListener(MouseEvent.CLICK, _clearMotion); 
@@ -100,10 +100,16 @@ package views.canvas.components.transformWidget
 			blocker.x = -x;
 			blocker.y = -y;
 			
-			if(KSketch2.studyMode == KSketch2.STUDY_D)
-				_insertKeyButton.label = "Break Motion";
+			if(KSketch2.studyMode == KSketch2.STUDY_P)
+			{
+				_insertKeyButton.label = "Break motion at "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+				_clearMotionButton.label = "Delete motions after "+ KTouchTimeControl.toTimeCode(_KSketch.time)
+			}
 			else
-				_insertKeyButton.label = "Insert Key";
+			{
+				_insertKeyButton.label = "Insert key at "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+				_clearMotionButton.label = "Clear keys after "+ KTouchTimeControl.toTimeCode(_KSketch.time);
+			}
 			
 			super.open(owner, modal);
 			_updateMenu();
@@ -209,6 +215,16 @@ package views.canvas.components.transformWidget
 			_interactionControl.begin_interaction_operation();
 			_interactionControl.selection.objects.getObjectAt(0).transformInterface.insertBlankKeyFrame(_KSketch.time, _interactionControl.currentInteraction);
 			_interactionControl.end_interaction_operation(null,_interactionControl.selection);
+			
+			var log:XML = <op/>;
+			var date:Date = new Date();
+			
+			log.@category = "Context";
+			log.@type = "Insert Key";
+			log.@triggeredTime = KTouchTimeControl.toTimeCode(_KSketch.time);
+			log.@elapsedTime = KTouchTimeControl.toTimeCode(date.time - _KSketch.logStartTime);
+			_KSketch.log.appendChild(log);
+			
 			_KSketch.dispatchEvent(new KSketchEvent(KSketchEvent.EVENT_MODEL_UPDATED));
 			
 			_canInsertKey();
@@ -220,6 +236,16 @@ package views.canvas.components.transformWidget
 			_interactionControl.begin_interaction_operation();
 			_interactionControl.selection.objects.getObjectAt(0).transformInterface.clearAllMotionsAfterTime(_KSketch.time, _interactionControl.currentInteraction);
 			_interactionControl.end_interaction_operation(null, _interactionControl.selection);
+			
+			var log:XML = <op/>;
+			var date:Date = new Date();
+			
+			log.@category = "Context";
+			log.@type = "Clear Future Keys";
+			log.@triggeredTime = KTouchTimeControl.toTimeCode(_KSketch.time);
+			log.@elapsedTime = KTouchTimeControl.toTimeCode(date.time - _KSketch.logStartTime);
+			_KSketch.log.appendChild(log);
+			
 			_KSketch.dispatchEvent(new KSketchEvent(KSketchEvent.EVENT_MODEL_UPDATED));
 			close();
 		}

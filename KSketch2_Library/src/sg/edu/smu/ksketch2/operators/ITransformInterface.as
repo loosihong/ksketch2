@@ -16,9 +16,11 @@ package sg.edu.smu.ksketch2.operators
 
 	public interface ITransformInterface
 	{
+		function set dirty(value:Boolean):void;
 		function matrix(time:int):Matrix;
 		function get firstKeyTime():int;
 		function get lastKeyTime():int;
+		function getActiveKey(time:int):IKeyFrame;
 		function get transitionType():int;
 		function canInterpolate(time:int):Boolean;
 		function canInsertKey(time:int):Boolean;
