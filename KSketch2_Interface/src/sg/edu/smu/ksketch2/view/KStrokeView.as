@@ -22,11 +22,12 @@ package sg.edu.smu.ksketch2.view
 		private var _thickness:Number = KDrawInteractor.penThickness;
 		private var _color:uint = KDrawInteractor.penColor;
 		private var _glowFilter:Array;
+		private var _isTempView:Boolean;
 		
 		/**
 		 * Object view representing strokes
 		 */
-		public function KStrokeView(object:KStroke, isGhost:Boolean = false, showPath:Boolean = true)
+		public function KStrokeView(object:KStroke, isGhost:Boolean = false, showPath:Boolean = true, isTempView:Boolean = true)
 		{
 			if(!isGhost)
 				_ghost = new KStrokeView(object, true, showPath);
@@ -40,12 +41,12 @@ package sg.edu.smu.ksketch2.view
 			}
 			else
 				_points = new Vector.<Point>();
-			
 
 			var filter:GlowFilter = new GlowFilter(_color, 1,10,10,8,1,true, true);
 			_glowFilter = [filter];
 			_render_DrawStroke();
 			cacheAsBitmap = true;
+			_isTempView = isTempView;
 		}
 		
 		override public function eraseIfHit(xPoint:Number, yPoint:Number, time:int, op:KCompositeOperation):void
@@ -109,8 +110,20 @@ package sg.edu.smu.ksketch2.view
 			graphics.moveTo(_points[0].x, _points[0].y);
 			
 			var i:int;
-			for(i = 1; i < length; i++)
-				graphics.lineTo(_points[i].x, _points[i].y);
+			
+			if(_isTempView)
+			{
+				for(i = 1; i < length; i++)
+					graphics.lineTo(_points[i].x, _points[i].y);
+			}
+			else
+			{
+				for(i=1; i<length; i+=3)
+				{
+					graphics.cubicCurveTo(_points[i].x, _points[i].y, _points[i+1].x,
+						_points[i+1].y, _points[i+2].x, _points[i+2].y);
+				}
+			}
 			
 			//For debug!
 			//if(_object && _object.centroid)
