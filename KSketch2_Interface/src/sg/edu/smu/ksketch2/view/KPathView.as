@@ -66,13 +66,13 @@ package sg.edu.smu.ksketch2.view
 			_scalePath.graphics.clear();
 		}
 		
-		public function recomputePathPoints(time:int):void
+		public function recomputePathPoints(time:int, updateGradient:Boolean):void
 		{
 			
 		}
 		
-		public function renderPathView(time:int):void
-		{
+		public function renderPathView(time:int, updateGradient:Boolean):void
+		{			
 			_currentCentroid = _object.transformMatrix(time).transformPoint(_object.centroid);
 			renderTranslationPath(time, _translatePoints, _translatePath);
 			renderTranslationPath(time, _nextTranslatePoints, _nextTranslatePath);
@@ -84,14 +84,24 @@ package sg.edu.smu.ksketch2.view
 		{
 			display.graphics.clear();
 			
-			if(!path || path.length == 0)
+			if(!path || (path.length < 2))
 				return;
+			
+			var pathLength:int = path.length;
 
 			display.graphics.lineStyle(PATH_THICKNESS, PATH_TRANSLATE_COLOR);
 			display.graphics.moveTo(path[0].x, path[0].y);
 			
-			for(var i:int = 1; i<path.length; i++)
-				display.graphics.lineTo(path[i].x, path[i].y);
+			if(pathLength < 4)
+			{
+				for(var i:int=1; i<pathLength; i++)
+					display.graphics.lineTo((path[i].x + _currentCentroid.x), (path[i].y + _currentCentroid.y));
+			}
+			else
+			{
+				for(i=1; i<pathLength; i+=3)
+					display.graphics.cubicCurveTo(path[i].x, path[i].y, path[i+1].x, path[i+1].y, path[i+2].x, path[i+2].y);
+			}
 			
 			_drawArrowHead(display, PATH_TRANSLATE_COLOR, path);
 		}
@@ -100,14 +110,24 @@ package sg.edu.smu.ksketch2.view
 		{
 			display.graphics.clear();
 			
-			if(!path || path.length == 0)
+			if(!path || (path.length < 2))
 				return;
+			
+			var pathLength:int = path.length;
 			
 			display.graphics.lineStyle(PATH_THICKNESS, PATH_ROTATE_COLOR);
 			display.graphics.moveTo(path[0].x+_currentCentroid.x, path[0].y+_currentCentroid.y);
 			
-			for(var i:int = 1; i<path.length; i++)
-				display.graphics.lineTo(path[i].x+_currentCentroid.x, path[i].y+_currentCentroid.y);
+			if(pathLength < 4)
+			{
+			for(var i:int=1; i<pathLength; i++)
+				display.graphics.lineTo((path[i].x + _currentCentroid.x), (path[i].y + _currentCentroid.y));
+			}
+			else
+			{
+			for(i=1; i<pathLength; i+=3)
+			display.graphics.cubicCurveTo((path[i].x + _currentCentroid.x), (path[i].y + _currentCentroid.y), (path[i+1].x + _currentCentroid.x), (path[i+1].y + _currentCentroid.y), (path[i+2].x + _currentCentroid.x), (path[i+2].y + _currentCentroid.y));
+			}
 			
 			_drawArrowHead(display, PATH_ROTATE_COLOR, path);
 		}
@@ -116,14 +136,24 @@ package sg.edu.smu.ksketch2.view
 		{
 			display.graphics.clear();
 			
-			if(!path || path.length == 0)
+			if(!path || (path.length < 2))
 				return;
+			
+			var pathLength:int = path.length;
 			
 			display.graphics.lineStyle(PATH_THICKNESS, PATH_SCALE_COLOR);
 			display.graphics.moveTo(path[0].x+_currentCentroid.x, path[0].y+_currentCentroid.y);
 			
-			for(var i:int = 1; i<path.length; i++)
-				display.graphics.lineTo(path[i].x+_currentCentroid.x, path[i].y+_currentCentroid.y);
+			if(pathLength < 4)
+			{
+				for(var i:int=1; i<pathLength; i++)
+					display.graphics.lineTo((path[i].x + _currentCentroid.x), (path[i].y + _currentCentroid.y));
+			}
+			else
+			{
+				for(i=1; i<pathLength; i+=3)
+					display.graphics.cubicCurveTo((path[i].x + _currentCentroid.x), (path[i].y + _currentCentroid.y), (path[i+1].x + _currentCentroid.x), (path[i+1].y + _currentCentroid.y), (path[i+2].x + _currentCentroid.x), (path[i+2].y + _currentCentroid.y));
+			}
 			
 			_drawArrowHead(display, PATH_SCALE_COLOR, path);
 		}

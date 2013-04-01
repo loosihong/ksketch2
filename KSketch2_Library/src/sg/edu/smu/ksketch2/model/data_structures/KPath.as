@@ -11,10 +11,13 @@ package sg.edu.smu.ksketch2.model.data_structures
 	import mx.utils.StringUtil;
 	
 	import sg.edu.smu.ksketch2.KSketch2;
+	import sg.edu.smu.ksketch2.utils.KPathProcessing;
 
 	public class KPath
 	{
 		public var points:Vector.<KTimedPoint>;
+		
+		private var _gradient:Array;
 		
 		/**
 		 * Class that holds 3d points
@@ -22,6 +25,15 @@ package sg.edu.smu.ksketch2.model.data_structures
 		public function KPath()
 		{
 			points = new Vector.<KTimedPoint>();
+			_gradient = null;
+		}
+		
+		public function ComputeGradient():void
+		{
+			if(points.length < 4)
+				return;
+			
+			_gradient = KPathProcessing.ComputeGradient(points);
 		}
 		
 		public function isTrivial(thresholdMagnitude:Number):Boolean
@@ -102,21 +114,33 @@ package sg.edu.smu.ksketch2.model.data_structures
 			var baseIndex:int = find_IndexAtOrBeforeProportion(proportion);
 
 			var nextIndex:int = baseIndex+1;
-			var basePoint:KTimedPoint = points[baseIndex];
-			var nextPoint:KTimedPoint = points[nextIndex];
+			var p0:KTimedPoint = points[baseIndex];
+			var p1:KTimedPoint = points[nextIndex];
 			
-			var baseProportion:Number = basePoint.time/duration;
+			var baseProportion:Number = p0.time/duration;
 			var numerator:Number = proportion - baseProportion;
 			
 			if(numerator == 0)
-				return basePoint.clone();
+				return p0.clone();
 			
-			var denominator:Number = (nextPoint.time - basePoint.time)/duration;
-			var interpolationFactor:Number = numerator/denominator;
+			var denominator:Number = (p1.time - p0.time)/duration;
+			var t:Number = numerator/denominator;
+
+			var t2:Number = t * t;
+			var OneMinusT:Number = 1 - t;
+			var twoT:Number = 2*t;
 			
-			var x:Number = (nextPoint.x-basePoint.x)*interpolationFactor + basePoint.x;
-			var y:Number = (nextPoint.y-basePoint.y)*interpolationFactor + basePoint.y;
-			var time:Number = (nextPoint.time-basePoint.time)*interpolationFactor + basePoint.time;
+			var h00:Number = (1 + twoT)*OneMinusT*OneMinusT;
+			var h10:Number = t*OneMinusT*OneMinusT;
+			var h01:Number = t2*(3 - twoT);
+			var h11:Number = t2*(t - 1);
+			
+			var m0:KTimedPoint = _gradient[baseIndex];
+			var m1:KTimedPoint = _gradient[nextIndex];
+			
+			var x:Number = h00 * p0.x + h10 * m0.x + h01 * p1.x + h11 * m1.x;
+			var y:Number = h00 * p0.y + h10 * m0.y + h01 * p1.y + h11 * m1.y;			
+			var time:Number = (p1.time-p0.time)*t + p0.time;
 			
 			return new KTimedPoint(x,y,time);
 		}

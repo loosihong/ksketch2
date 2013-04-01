@@ -113,7 +113,7 @@ package sg.edu.smu.ksketch2.view
 			
 			if(_pathView)
 				if(_pathView.visible)
-					_updatePathView(time);
+					_updatePathView(time, false);
 		}
 		
 		/**
@@ -203,7 +203,7 @@ package sg.edu.smu.ksketch2.view
 			if(_pathView)
 			{
 				_pathView.visible = true;
-				_updatePathView(event.time)
+				_updatePathView(event.time, true)
 			}
 			
 			_isTransiting = false;
@@ -211,12 +211,12 @@ package sg.edu.smu.ksketch2.view
 		}
 		
 		public var myI:int = 0;
-		protected function _updatePathView(time:int):void
+		protected function _updatePathView(time:int, updateGradient:Boolean):void
 		{
 			if(_pathView)
 			{
-				_pathView.recomputePathPoints(time);
-				_pathView.renderPathView(time);
+				//_pathView.recomputePathPoints(time);
+				_pathView.renderPathView(time, updateGradient);
 			}
 		}
 		

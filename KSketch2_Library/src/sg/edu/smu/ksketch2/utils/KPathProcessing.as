@@ -1,5 +1,7 @@
 package sg.edu.smu.ksketch2.utils
 {
+	import flash.geom.Point;
+	
 	import sg.edu.smu.ksketch2.KSketch2;
 	import sg.edu.smu.ksketch2.model.data_structures.KPath;
 	import sg.edu.smu.ksketch2.model.data_structures.KTimedPoint;
@@ -205,6 +207,41 @@ package sg.edu.smu.ksketch2.utils
 			path.points = newPoints;
 		}
 		
+		public static function CatmullRomToBeizer(points:Vector.<KTimedPoint>, m:Array):Vector.<KTimedPoint>
+		{
+			if(!points || !m || (points.length < 4) || (m.length < 4) || (points.length != m.length))
+				return null;
+			
+			//Create new points for Catmull Rom Spline
+			var newPoints:Vector.<KTimedPoint> = new Vector.<KTimedPoint>();
+			var pCtr:int = points.length - 1;
+			
+			//Add two bezier control points in between two catmull rom control points
+			for(var i:int=0; i<pCtr; i++)
+			{
+				var tempPoint:KTimedPoint;
+				
+				//First catmull rom control points, B0 = P0
+				newPoints.push(points[i]);
+				
+				//First bezier control points, B1 = P0 + M0/3
+				tempPoint = new KTimedPoint((points[i].x + (m[i].x/3)), (points[i].y + (m[i].y/3)));
+				newPoints.push(tempPoint);
+				
+				//Second bezier control points, B2 = P1 - M1/3
+				tempPoint = new KTimedPoint((points[i+1].x - (m[i+1].x/3)), (points[i+1].y - (m[i+1].y/3)));
+				newPoints.push(tempPoint);
+				
+				//Second catmull rom control points, B1 = P1
+				//To be covered in next iteration
+			}
+			
+			//Add last catmull rom control point
+			newPoints.push(points[pCtr]);
+			
+			return newPoints;
+		}
+		
 		public static function distance(p1:KTimedPoint, p2:KTimedPoint):Number
 		{
 			return Math.sqrt(((p1.x-p2.x)*(p1.x-p2.x))+((p1.y-p2.y)*(p1.y-p2.y)));
@@ -216,6 +253,30 @@ package sg.edu.smu.ksketch2.utils
 		public static function PointTangent(prevPt:KTimedPoint, nxtPt:KTimedPoint):KTimedPoint
 		{
 			return new KTimedPoint((prevPt.x - nxtPt.x)/2, (prevPt.y - nxtPt.y)/2);
+		}
+		
+		public static function ComputeGradient(points:Vector.<KTimedPoint>):Array
+		{			
+			if(!points || points.length < 4)
+				return null;
+			
+			var numPoints:int = points.length;			
+			var gradient:Array = new Array(numPoints);
+			
+			//Tangent for first control point
+			gradient[0] = PointTangent(points[1], points[0]);
+			numPoints--;
+			
+			//Tangent for the rest of control points
+			for(var i:int = 1; i<numPoints; i++)
+			{
+				gradient[i] = PointTangent(points[i + 1], points[i - 1]);
+			}
+			
+			//Tangent for last control point
+			gradient[numPoints] = PointTangent(points[numPoints], points[numPoints - 1]);
+			
+			return gradient;
 		}
 	}
 }

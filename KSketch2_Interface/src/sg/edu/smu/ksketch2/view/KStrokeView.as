@@ -111,7 +111,7 @@ package sg.edu.smu.ksketch2.view
 			
 			var i:int;
 			
-			if(_isTempView)
+			if(_isTempView || (length < 4))
 			{
 				for(i = 1; i < length; i++)
 					graphics.lineTo(_points[i].x, _points[i].y);

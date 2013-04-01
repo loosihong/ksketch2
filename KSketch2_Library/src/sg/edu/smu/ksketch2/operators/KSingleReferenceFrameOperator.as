@@ -227,7 +227,7 @@ package sg.edu.smu.ksketch2.operators
 			var computeTime:int;
 			
 			var currentKey:KSpatialKeyFrame = _refFrame.getKeyAftertime(_startTime) as KSpatialKeyFrame;
-			
+
 			while(currentKey)
 			{
 				
@@ -447,7 +447,7 @@ package sg.edu.smu.ksketch2.operators
 			var changeY:Number = dy - _transitionY;
 			var changeTheta:Number = dTheta - _transitionTheta;
 			var changeScale:Number = dScale - _transitionSigma;
-			
+
 			_magX += Math.abs(dx - _transitionX);
 			_magY += Math.abs(dy - _transitionY);
 			_magTheta += Math.abs(dTheta - _transitionTheta);
@@ -511,6 +511,12 @@ package sg.edu.smu.ksketch2.operators
 
 			_inTransit = false;
 			_dirty = true;
+			
+			//Compute gradient for catmull rom spline
+			_TStoredPath.ComputeGradient();
+			_RStoredPath.ComputeGradient();
+			_SStoredPath.ComputeGradient();
+			
 			//Dispatch a transform finalised event
 			//Application level components can listen to this event to do updates
 			_object.dispatchEvent(new KObjectEvent(KObjectEvent.OBJECT_TRANSFORM_ENDED, _object, time)); 
@@ -524,7 +530,7 @@ package sg.edu.smu.ksketch2.operators
 				//After inserting a key, will be pretty sure there is a key at time.
 				//Just get the key at time
 				_interpolationKey = _refFrame.getKeyAftertime(time-1) as KSpatialKeyFrame;
-				
+
 				//Only 1 case, where time is greater than the reference frame's end time
 				//Use the last key if this happens
 				if(!_interpolationKey)
@@ -571,12 +577,22 @@ package sg.edu.smu.ksketch2.operators
 		{
 			if(_transitionType == KSketch2.TRANSITION_INTERPOLATED)
 			{
+				//Compute gradient for catmull rom spline
+				_interpolationKey.translatePath.ComputeGradient();
+				_interpolationKey.rotatePath.ComputeGradient();
+				_interpolationKey.scalePath.ComputeGradient();
+				
 				op.addOperation(new KReplacePathOperation(_interpolationKey, _interpolationKey.translatePath, _TStoredPath, KSketch2.TRANSFORM_TRANSLATION));
 				op.addOperation(new KReplacePathOperation(_interpolationKey, _interpolationKey.rotatePath, _RStoredPath, KSketch2.TRANSFORM_ROTATION));
 				op.addOperation(new KReplacePathOperation(_interpolationKey, _interpolationKey.scalePath, _SStoredPath, KSketch2.TRANSFORM_SCALE));
 				
 				if(_nextInterpolationKey)
 				{
+					//Compute gradient for catmull rom spline
+					_nextInterpolationKey.translatePath.ComputeGradient();
+					_nextInterpolationKey.rotatePath.ComputeGradient();
+					_nextInterpolationKey.scalePath.ComputeGradient();
+					
 					op.addOperation(new KReplacePathOperation(_nextInterpolationKey, _nextInterpolationKey.translatePath, _TStoredPath2, KSketch2.TRANSFORM_TRANSLATION));
 					op.addOperation(new KReplacePathOperation(_nextInterpolationKey, _nextInterpolationKey.rotatePath, _RStoredPath2, KSketch2.TRANSFORM_ROTATION));
 					op.addOperation(new KReplacePathOperation(_nextInterpolationKey, _nextInterpolationKey.scalePath, _SStoredPath2, KSketch2.TRANSFORM_SCALE));

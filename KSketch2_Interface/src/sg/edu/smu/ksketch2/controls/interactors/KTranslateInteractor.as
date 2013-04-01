@@ -66,7 +66,7 @@ package sg.edu.smu.ksketch2.controls.interactors
 		{
 			var i:int = 0;
 			var length:int = _toTransitObjects.length();
-			
+
 			for(i; i<length; i++)
 				_KSketch.endTransform(_toTransitObjects.getObjectAt(i), _currentOperation);
 			
