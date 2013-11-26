@@ -24,22 +24,12 @@ package sg.edu.smu.ksketch2.view
 		private static const PATH_RADIUS:Number = 100;
 		private var _activeKey:KSpatialKeyFrame;
 		
-		private var _translateGradient:Array;
-		private var _rotateGradient:Array;
-		private var _scaleGradient:Array;
-		private var _nextTranslateGradient:Array;
-		
 		public function KSingleCenterPathView(object:KObject)
 		{
 			super(object);
-			
-			_translateGradient = null;
-			_rotateGradient = null;
-			_scaleGradient = null;
-			_nextTranslateGradient = null;
 		}
 		
-		override public function recomputePathPoints(time:int, updateGradient:Boolean):void
+		override public function recomputePathPoints(time:int):void
 		{
 			if(!_activeKey)
 			{
@@ -47,6 +37,7 @@ package sg.edu.smu.ksketch2.view
 				_rotatePoints = null;
 				_scalePoints = null;
 				_nextTranslatePoints = null;
+				
 				return;
 			}
 			
@@ -76,6 +67,13 @@ package sg.edu.smu.ksketch2.view
 					_scalePoints = generatePath(currentKey, currentKey.scalePath.points, _scalePoints);
 				}
 			}
+			else
+			{
+				_translateGradient = KPathProcessing.ComputeGradient(_translatePoints);			
+				_rotateGradient = KPathProcessing.ComputeGradient(_rotatePoints);			
+				_scaleGradient = KPathProcessing.ComputeGradient(_scalePoints);			
+				_nextTranslateGradient = KPathProcessing.ComputeGradient(_nextTranslatePoints);
+			}
 			
 			if(time == _activeKey.time || !_activeKey.hasActivityAtTime())
 			{
@@ -91,19 +89,6 @@ package sg.edu.smu.ksketch2.view
 			}
 			else
 				_nextTranslatePoints = null;
-			
-			if(updateGradient)
-			{
-				_translateGradient = KPathProcessing.ComputeGradient(_translatePoints);			
-				_rotateGradient = KPathProcessing.ComputeGradient(_rotatePoints);			
-				_scaleGradient = KPathProcessing.ComputeGradient(_scalePoints);			
-				_nextTranslateGradient = KPathProcessing.ComputeGradient(_nextTranslatePoints);
-			}
-			
-			_translatePoints = KPathProcessing.CatmullRomToBeizer(_translatePoints, _translateGradient);
-			_rotatePoints = KPathProcessing.CatmullRomToBeizer(_rotatePoints, _rotateGradient);
-			_scalePoints = KPathProcessing.CatmullRomToBeizer(_scalePoints, _scaleGradient);
-			_nextTranslatePoints = KPathProcessing.CatmullRomToBeizer(_nextTranslatePoints, _nextTranslateGradient);
 		}
 		
 		/**
@@ -208,12 +193,11 @@ package sg.edu.smu.ksketch2.view
 		}
 
 		
-		override public function renderPathView(time:int, updateGradient:Boolean):void
+		override public function renderPathView(time:int):void
 		{
 			_activeKey =  (_object.transformInterface as KSingleReferenceFrameOperator).getActiveKey(time) as KSpatialKeyFrame;
-					
-			recomputePathPoints(time, updateGradient);
-			super.renderPathView(time, updateGradient);
+			recomputePathPoints(time);
+			super.renderPathView(time);
 		}
 	}
 }

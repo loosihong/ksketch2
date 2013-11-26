@@ -58,6 +58,7 @@
 				group_groupOps.init(_commandInterface, _interactionControl);
 				group_pen.init(_commandInterface);
 				group_key.init(_commandInterface, _interactionControl, _KSketch);
+				button_edgeDetect.Init(_KSketch);
 				group_configOps.init();
 				
 				_interactionControl.init();
@@ -133,7 +134,9 @@
 				<!--black red green blue white-->
 				
 				<!--Stretchable part of the top bar-->
-				<s:Group id = "topBar_resizableContainer" width="100%"/>
+				<s:Group id = "topBar_resizableContainer" width="100%">
+					<buttons:Button_EdgeDetect id="button_edgeDetect"/>
+				</s:Group>
 				<buttons:Group_Settings id="group_configOps"/>
 			</s:Group>
 			

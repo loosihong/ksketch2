@@ -63,10 +63,11 @@ package sg.edu.smu.ksketch2.controls.interactors
 			{
 				reset();
 				_interactionControl.end_interaction_operation();
+				
 				return;
 			}
 			
-			_points = _CatmullRomSpline(_points);
+			//_points = _CatmullRomSpline(_points);
 			
 			var drawOp:KCompositeOperation = new KCompositeOperation();
 			var newStroke:KStroke = _KSketch.object_Add_Stroke(_points, _KSketch.time, penColor, penThickness, drawOp);

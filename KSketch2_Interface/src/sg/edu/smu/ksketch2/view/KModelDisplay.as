@@ -153,7 +153,7 @@ package sg.edu.smu.ksketch2.view
 		}
 		
 		protected function _handler_UpdateObjectView(event:KObjectEvent):void
-		{
+		{trace("_handler_UpdateObjectView");
 			var view:IObjectView = _viewsTable[event.object];
 
 			if(!view)

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   title="K-Sketch 2 Edge Detector"
+			   creationComplete="_Init();"
+			   close="_HandleEdgeDetectClose();">
+	
+
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.core.SpriteVisualElement;
+			import spark.events.IndexChangeEvent;
+			
+			import sg.edu.smu.ksketch2.KSketch2;
+			import sg.edu.smu.ksketch2.model.objects.KImage;
+			import sg.edu.smu.ksketch2.operators.KEdgeDetect;
+			import sg.edu.smu.ksketch2.operators.KImageCrop;
+			
+			private var _kSketch:KSketch2;
+			private var _kEdgeDetect:KEdgeDetect;
+			private var _kImageCrop:KImageCrop;
+			
+			public function set KSketch(value:KSketch2):void
+			{
+				_kSketch = value;
+			}
+			
+			private function _Init():void
+			{
+				_kEdgeDetect = new KEdgeDetect(100, 25);
+				upperThresholdSlider.value = 100;
+				lowerThresholdSlider.value = 25;
+				
+				_kImageCrop = new KImageCrop(originalImgSpace);
+				cropChoice.selectedIndex = 0;
+				_HandleCropChoice(null);
+				
+				snapStrSlider.value = 5;
+				_SnapStrChanged();
+				
+				imgChoice.selectedIndex = 0;
+			}
+			
+			private function _HandleEdgeDetectClose():void
+			{				
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function _HandleCropChoice(evt:IndexChangeEvent):void
+			{
+				_kImageCrop.CropMode = cropChoice.selectedIndex;
+				
+				//Handle snap crop
+				if(cropChoice.selectedIndex == 0)
+				{
+					snapGrp.visible = true;
+				}
+				else
+				{
+					snapGrp.visible = false;
+				}
+			}	
+			
+			private function _HandleImgChoice(evt:IndexChangeEvent):void
+			{
+				if(imgChoice.selectedIndex == 0)
+				{
+					cropImg.source = _kImageCrop.CropImage;
+				}
+				else if(imgChoice.selectedIndex == 1)
+				{
+					cropImg.source = _kEdgeDetect.HysteresisImage;
+				}
+			}
+			
+			private function _HandleNewBtn(evt:Event):void
+			{
+				_kEdgeDetect.addEventListener("KEDLoaded", _HandleImgLoaded);
+				_kEdgeDetect.addEventListener("KEDHysteresis", _HandleGetHysteresis);
+				_kEdgeDetect.SelectImageFile();
+			}
+			
+			private function _HandleImgLoaded(event:Event):void
+			{
+				_kEdgeDetect.removeEventListener("KEDLoaded", _HandleImgLoaded);
+				statusMsg.text = "Processing image and retrieving edges.";
+				
+				//Add new image
+				_kImageCrop.ImageBitmapData = _kEdgeDetect.PreProcessBitmapData;
+				
+				if(_kEdgeDetect.PreProcessBitmapData != null)
+				{
+					_HandleCropChoice(null);
+					_HandleImgChoice(null);
+					originalImgSpace.mouseChildren = false;
+				}
+			}
+			
+			private function _HandleGetHysteresis(evt:Event):void
+			{
+				_kEdgeDetect.removeEventListener("KEDHysteresis", _HandleGetHysteresis);
+				statusMsg.text = "Image ready to be cropped.";
+				_kImageCrop.EdgeBitmapData = _kEdgeDetect.HysteresisBitmapData;
+				_HandleImgChoice(null);
+				originalImgSpace.mouseChildren = true;
+			}
+			
+			private function _HandleUndoBtn(evt:Event):void
+			{
+				_kImageCrop.Undo();
+			}			
+			
+			private function _HandleImportBtn(evt:Event):void
+			{
+				this.dispatchEvent(new CloseEvent(CloseEvent.CLOSE));
+				
+				//Place crop image onto drawing area
+				if(_kEdgeDetect.ImageWidth > 0)
+				{
+					var imgBD:BitmapData = _kImageCrop.GetFinalImageData();
+					
+					if(imgBD != null)
+					{
+						var newImg:KImage = _kSketch.object_Add_Image(imgBD, _kSketch.time);
+					}
+				}
+			}
+			
+			private function _HandleSnapBtn(evt:Event):void
+			{
+				_kImageCrop.ActivateSnapCrop();
+			}
+			
+			private function _HandleResetSnapBtn(evt:Event):void
+			{
+				_kImageCrop.EndSnapCrop();
+				_kImageCrop.NewSnapCrop();
+			}
+			
+			private function _HandleThresholdSetBtn(evt:Event):void
+			{
+				_kEdgeDetect.addEventListener("KEDHysteresis", _HandleGetHysteresis);
+				statusMsg.text = "Retrieving edges.";
+				originalImgSpace.mouseChildren = false;
+				_kEdgeDetect.StartDoubleThreshold();
+			}
+			
+			private function _ThresholdChanged():void
+			{
+				thresholdSetBtn.enabled = _kEdgeDetect.SetThresholdValue(upperThresholdSlider.value, lowerThresholdSlider.value);
+			}
+			
+			private function _SnapStrChanged():void
+			{
+				_kImageCrop.SnapStrength = snapStrSlider.value;
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<s:HGroup width="100%" height="100%">		
+		<s:VGroup width="50%" height="100%" horizontalAlign="center">
+			<s:Label paddingTop="5"
+					 paddingBottom="5"
+					 fontWeight="bold"
+					 fontSize="14"
+					 text="Original Image"/>
+			
+			<s:HGroup>
+				<s:Label fontWeight="bold" text="Crop image with:"/>
+				
+				<s:DropDownList id="cropChoice" change="_HandleCropChoice(event);"> 
+					<mx:ArrayCollection>
+						<fx:String>Snap Edge</fx:String>
+						<fx:String>Trace Edge</fx:String>
+						<fx:String>Horizontal Spread</fx:String>
+						<fx:String>Vertical Spread</fx:String>
+					</mx:ArrayCollection>
+				</s:DropDownList>
+			</s:HGroup>
+			
+			<s:Scroller width="100%" height="78%">
+				<s:HGroup horizontalAlign="center" verticalAlign="middle">
+					<s:SpriteVisualElement id="originalImgSpace"/>
+				</s:HGroup>
+			</s:Scroller>
+			
+			<s:VGroup id="snapGrp" horizontalAlign="center">
+				<s:HGroup>
+					<s:Label text="Snap Strength: {snapStrSlider.value}" width="100"/>
+					
+					<s:HSlider id="snapStrSlider"
+							   minimum="0" maximum="10"
+							   liveDragging="true"
+							   thumbRelease="_SnapStrChanged();"/>
+				</s:HGroup>
+				
+				<s:HGroup>
+					<s:Button label="Crop" click="_HandleSnapBtn(event);"/>
+					<s:Button label="Reset" click="_HandleResetSnapBtn(event);"/>
+				</s:HGroup>
+			</s:VGroup>
+			
+			<s:HGroup>
+				<s:Button label="Open Image" click="_HandleNewBtn(event);"/>
+				<s:Button label="Undo" click="_HandleUndoBtn(event);"/>
+				<s:Button label="Import" click="_HandleImportBtn(event);"/>
+			</s:HGroup>
+		</s:VGroup>
+		
+		<s:VGroup width="50%" height="100%" horizontalAlign="center">
+			<s:Label paddingTop="5"
+					 paddingBottom="5"
+					 fontWeight="bold"
+					 fontSize="14"
+					 text="Alternate Image"/>
+			
+			<s:HGroup>
+				<s:Label fontWeight="bold" text="Image:"/>
+				
+				<s:DropDownList id="imgChoice" change="_HandleImgChoice(event);"> 
+					<mx:ArrayCollection>
+						<fx:String>Crop Image</fx:String>
+						<fx:String>Edges Image</fx:String>
+					</mx:ArrayCollection>
+				</s:DropDownList>
+			</s:HGroup>
+			
+			<s:Scroller width="100%" height="78%">
+				<s:HGroup horizontalAlign="center" verticalAlign="middle">
+					<s:BitmapImage id="cropImg"/>
+				</s:HGroup>
+			</s:Scroller>
+			
+			<s:HGroup>
+				<s:Label fontWeight="bold"	text="Status: "/>
+				<s:Label id="statusMsg"/>
+			</s:HGroup>
+			
+			<s:HGroup>
+				<s:Label text="Upper Threshold: {upperThresholdSlider.value}" width="120"/>
+				
+				<s:HSlider id="upperThresholdSlider"
+						   minimum="0" maximum="255"
+						   liveDragging="true"
+						   thumbRelease="_ThresholdChanged();"/>
+			</s:HGroup>
+			
+			<s:HGroup>
+				<s:Label text="Lower Threshold: {lowerThresholdSlider.value}" width="120"/>
+				
+				<s:HSlider id="lowerThresholdSlider"
+						   minimum="0" maximum="255"
+						   liveDragging="true"
+						   thumbRelease="_ThresholdChanged();"/>
+			</s:HGroup>
+				
+			<s:Button id="thresholdSetBtn"
+					  label="Set"
+					  click="_HandleThresholdSetBtn(event);"/>
+		</s:VGroup>
+	</s:HGroup>
+	
+</s:TitleWindow>

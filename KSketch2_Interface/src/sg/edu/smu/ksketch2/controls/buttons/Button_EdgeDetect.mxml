@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Button xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  label="K-Sketch 2 Edge Detector"
+		  click="_HandleEdgeDetectBtn(event);">
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			
+			import sg.edu.smu.ksketch2.KEdgeDetectScreen;
+			import sg.edu.smu.ksketch2.KSketch2;
+			
+			private var _edgeDetectWin:KEdgeDetectScreen = null;
+			private var _KSketch:KSketch2;
+			
+			public function Init(newSketch:KSketch2):void
+			{
+				_KSketch = newSketch;	
+			}
+			
+			private function _HandleEdgeDetectBtn(evt:MouseEvent):void
+			{
+				_edgeDetectWin = new KEdgeDetectScreen();
+				_edgeDetectWin.KSketch = _KSketch;
+				_edgeDetectWin.width = 0.95*stage.stageWidth;
+				_edgeDetectWin.height = 0.95*stage.stageHeight;
+				_edgeDetectWin.x = 0.025*stage.stageWidth;
+				_edgeDetectWin.y = 0.025*stage.stageHeight;
+				
+				PopUpManager.addPopUp(_edgeDetectWin, this, true);
+				_edgeDetectWin.addEventListener(CloseEvent.CLOSE, _HandleEdgeDetectClose);
+			}
+			
+			private function _HandleEdgeDetectClose(evt:CloseEvent):void
+			{
+				_edgeDetectWin = null;
+			}
+		]]>
+	</fx:Script>
+	
+</s:Button>

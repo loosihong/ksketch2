@@ -14,6 +14,7 @@ package sg.edu.smu.ksketch2.view
 	
 	import sg.edu.smu.ksketch2.model.data_structures.KTimedPoint;
 	import sg.edu.smu.ksketch2.model.objects.KObject;
+	import sg.edu.smu.ksketch2.utils.KPathProcessing;
 
 	public class KPathView
 	{
@@ -35,6 +36,11 @@ package sg.edu.smu.ksketch2.view
 		protected var _scalePath:Shape;
 		protected var _visibility:Boolean;
 		
+		protected var _translateGradient:Array;
+		protected var _rotateGradient:Array;
+		protected var _scaleGradient:Array;
+		protected var _nextTranslateGradient:Array;
+		
 		public function KPathView(object:KObject)
 		{
 			_object = object;	
@@ -43,6 +49,10 @@ package sg.edu.smu.ksketch2.view
 			_rotatePath = new Shape();
 			_scalePath = new Shape();
 			visible = false;
+			_translateGradient = null;
+			_rotateGradient = null;
+			_scaleGradient = null;
+			_nextTranslateGradient = null;
 		}
 		
 		public function setDrawingArea(translateHost:DisplayObjectContainer, rotateHost:DisplayObjectContainer, scaleHost:DisplayObjectContainer):void
@@ -66,18 +76,18 @@ package sg.edu.smu.ksketch2.view
 			_scalePath.graphics.clear();
 		}
 		
-		public function recomputePathPoints(time:int, updateGradient:Boolean):void
+		public function recomputePathPoints(time:int):void
 		{
 			
 		}
 		
-		public function renderPathView(time:int, updateGradient:Boolean):void
-		{			
+		public function renderPathView(time:int):void
+		{
 			_currentCentroid = _object.transformMatrix(time).transformPoint(_object.centroid);
-			renderTranslationPath(time, _translatePoints, _translatePath);
-			renderTranslationPath(time, _nextTranslatePoints, _nextTranslatePath);
-			renderRotationPath(time, _rotatePoints, _rotatePath);
-			renderScalePath(time, _scalePoints, _scalePath);
+			renderTranslationPath(time, KPathProcessing.CatmullRomToBeizer(_translatePoints, _translateGradient), _translatePath);
+			renderTranslationPath(time, KPathProcessing.CatmullRomToBeizer(_nextTranslatePoints, _nextTranslateGradient), _nextTranslatePath);
+			renderRotationPath(time, KPathProcessing.CatmullRomToBeizer(_rotatePoints, _rotateGradient), _rotatePath);
+			renderScalePath(time,KPathProcessing.CatmullRomToBeizer(_scalePoints, _scaleGradient), _scalePath);
 		}
 		
 		protected function renderTranslationPath(time:int, path:Vector.<KTimedPoint>, display:Shape):void
